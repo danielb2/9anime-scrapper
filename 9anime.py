@@ -152,6 +152,7 @@ def parse():
             choices=['360p','480p','720p','1080p'],
             help="resolution of download: 360p, 480p, 720p, 1080p [default: %default]")
     parser.add_option("-b", "--batchsize",
+            type="int",
             default='10',
             help='number of episodes to generate next batch for when reading from 9anime.json')
 
@@ -171,7 +172,7 @@ def main():
             options.resolution = cfg['resolution']
             options.start = int(cfg['next'])
             options.batchsize = options.batchsize or int(cfg['batchsize'])
-            options.finish = options.start + options.batchsize
+            options.finish = options.start + options.batchsize - 1
             options.link = cfg['link']
         if options.episode:
             options.cfg = False
@@ -192,7 +193,7 @@ def main():
 
     get_link(options)
 
-def write_cfg(args, isOK):
+def write_cfg(args):
     with open(CFG_FILE, 'w') as outfile:
         json.dump(args, outfile)
 

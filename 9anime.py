@@ -13,6 +13,7 @@ from optparse import OptionParser
 BASE_URL = "https://9anime.to"
 GRABBER_API = BASE_URL + "/grabber-api/"
 INFO_API = BASE_URL + '/ajax/episode/info'
+CFG_FILE = '9anime.json'
 RESOLUTIONS = {
     '360p': 0,
     '480p': 1,
@@ -38,12 +39,12 @@ def get_mp4(id):
     logging.info("Recieved %i different links for id %s" % (len(data), payload['id']))
     return data
 
-def getAllEpisodes(link, options):
+def getAllEpisodes(options):
     data = {
         "episodes": [],
     }
 
-    page = BeautifulSoup(requests.get(link).content,"lxml")
+    page = BeautifulSoup(requests.get(options.link).content,"lxml")
 
     servers = page.findAll("div", {"class": "server row"})
 
@@ -81,10 +82,10 @@ def append_file(handle, link, episode, resolution):
     link += "&title=%s-%s-%s\n" % (episode['title'], episodeNumber, resolution)
     handle.write(link)
 
-def get_link(link, options):
+def get_link(options):
 
     resolution = RESOLUTIONS[options.resolution]
-    data = getAllEpisodes(link, options)
+    data = getAllEpisodes(options)
     outFile = open(options.output,'w')
 
     wanted = range(options.start, options.finish+1)
@@ -95,17 +96,26 @@ def get_link(link, options):
             continue
 
         links=get_mp4(episode['id'])
+        last_episode = None
 
         while current_res > 0 and int(episode['number']) in wanted:
             try:
                 dwnld_link=links[current_res]['file']
                 append_file(outFile, dwnld_link, episode, current_res)
                 wanted.remove(int(episode['number']))
+                last_episode = int(episode['number'])
             except IndexError:
                 tmp_res = RESOLUTIONS[current_res]
                 current_res -= 1
                 print "%s is unavailable for episode %s on server %d, attempting %s" % ( tmp_res, episode['number'], episode['server'], RESOLUTIONS[current_res])
                 continue
+
+    write_cfg({
+        'link': options.link,
+        'next': ++last_episode,
+        'resolution': options.resolution,
+        'batchsize': options.batchsize
+    })
 
     outFile.close()
 
@@ -139,23 +149,29 @@ def parse():
             default="720p",
             choices=['360p','480p','720p','1080p'],
             help="resolution of download: 360p, 480p, 720p, 1080p [default: %default]")
+    parser.add_option("-b", "--batchsize",
+            default='10',
+            help='number of episodes to generate next batch for when reading from 9anime.json')
 
     return parser.parse_args()
 
 def main():
     (options, args) = parse()
 
-    cfg_file = '9anime.json'
-    if os.path.isfile(cfg_file):
-        with open(cfg_file) as json_data:
+
+    if os.path.isfile(CFG_FILE):
+        with open(CFG_FILE) as json_data:
             cfg = json.load(json_data)
-            print cfg
             options.resolution = cfg['resolution']
-            options.start = cfg['next']
-            get_link(cfg['url'], options)
+            options.start = int(cfg['next'])
+            options.batchsize = int(cfg['batchsize'])
+            options.finish = options.start + options.batchsize
+            options.link = cfg['link']
+            get_link(options)
             return
 
-    derp
+    options.link = args[0]
+
     if options.episode:
         episodes = string.split(options.episode, '-')
         options.start = int(episodes.pop(0) or 1)
@@ -170,7 +186,15 @@ def main():
         print "ERROR: Start must be smaller than finish"
         exit(-1)
 
-    get_link(args[0], options)
+    get_link(options)
+
+def write_cfg(args):
+
+    with open(CFG_FILE, 'w') as outfile:
+        json.dump(args, outfile)
+
+
+
 
 main()
 

@@ -111,11 +111,13 @@ def get_link(options):
                 print "%s is unavailable for episode %s on server %d, attempting %s" % ( tmp_res, episode['number'], episode['server'], RESOLUTIONS[current_res])
                 continue
 
+    print options
     write_cfg({
         'link': options.link,
         'next': last_episode + 1,
         'resolution': options.resolution,
-        'batchsize': options.batchsize
+        'batchsize': options.batchsize,
+        'cfg': options.cfg
     })
 
     outFile.close()
@@ -159,6 +161,10 @@ def parse():
 def main():
     (options, args) = parse()
 
+    options.cfg = True
+
+    if len(args) > 0:
+        options.link = args[0]
 
     if os.path.isfile(CFG_FILE):
         with open(CFG_FILE) as json_data:
@@ -168,15 +174,12 @@ def main():
             options.batchsize = int(cfg['batchsize'])
             options.finish = options.start + options.batchsize
             options.link = cfg['link']
-            get_link(options)
-            return
-
-    options.link = args[0]
 
     if options.episode:
         episodes = string.split(options.episode, '-')
         options.start = int(episodes.pop(0) or 1)
         options.finish = options.start
+        options.cfg = False
         if len(episodes) >= 1:
             if episodes[0]:
                 options.finish = int(episodes.pop(0))
@@ -190,11 +193,9 @@ def main():
     get_link(options)
 
 def write_cfg(args):
-
-    with open(CFG_FILE, 'w') as outfile:
-        json.dump(args, outfile)
-
-
+    if args['cfg']:
+        with open(CFG_FILE, 'w') as outfile:
+            json.dump(args, outfile)
 
 
 main()

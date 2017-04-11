@@ -173,12 +173,13 @@ def main():
             options.batchsize = options.batchsize or int(cfg['batchsize'])
             options.finish = options.start + options.batchsize
             options.link = cfg['link']
+        if options.episode:
+            options.cfg = False
 
     if options.episode:
         episodes = string.split(options.episode, '-')
         options.start = int(episodes.pop(0) or 1)
         options.finish = options.start
-        options.cfg = True if len(args) > 0 else False
         if len(episodes) >= 1:
             if episodes[0]:
                 options.finish = int(episodes.pop(0))

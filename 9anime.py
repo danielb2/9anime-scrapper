@@ -87,23 +87,24 @@ def get_link(options):
     resolution = RESOLUTIONS[options.resolution]
     data = getAllEpisodes(options)
     outFile = open(options.output,'w')
+    last_episode = options.start - 1
 
     wanted = range(options.start, options.finish+1)
     for episode in data['episodes']:
         current_res = resolution
+        episodeNumber = int(episode['number'])
 
         if not int(episode['number']) in wanted:
             continue
 
         links=get_mp4(episode['id'])
-        last_episode = None
 
-        while current_res > 0 and int(episode['number']) in wanted:
+        while current_res > 0 and episodeNumber in wanted:
             try:
                 dwnld_link=links[current_res]['file']
                 append_file(outFile, dwnld_link, episode, current_res)
-                wanted.remove(int(episode['number']))
-                last_episode = int(episode['number'])
+                wanted.remove(episodeNumber)
+                last_episode = episodeNumber
             except IndexError:
                 tmp_res = RESOLUTIONS[current_res]
                 current_res -= 1
@@ -112,7 +113,7 @@ def get_link(options):
 
     write_cfg({
         'link': options.link,
-        'next': ++last_episode,
+        'next': last_episode + 1,
         'resolution': options.resolution,
         'batchsize': options.batchsize
     })
